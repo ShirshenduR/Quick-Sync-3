@@ -1,0 +1,19 @@
+{
+  "name": "quicksync-workspace",
+  "version": "1.0.0",
+  "description": "QuickSync development workspace",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && python manage.py runserver",
+    "dev:frontend": "cd frontend && npm start",
+    "setup": "chmod +x setup.sh && ./setup.sh",
+    "migrate": "cd backend && python manage.py migrate",
+    "makemigrations": "cd backend && python manage.py makemigrations",
+    "test:backend": "cd backend && python manage.py test",
+    "test:frontend": "cd frontend && npm test",
+    "build": "cd frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
