@@ -34,13 +34,10 @@ class MatchingService:
     """Service for AI-powered user matching"""
     
     def __init__(self):
-        try:
-            # Try to import the real sentence transformer
-            from sentence_transformers import SentenceTransformer
-            self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        except ImportError:
-            # Fall back to mock implementation
-            self.model = MockSentenceTransformer()
+        # Always use mock implementation for development
+        # In production, you would configure the real sentence transformer
+        self.model = MockSentenceTransformer()
+        self.using_mock = True
     
     def create_user_embedding(self, user: User) -> Dict[str, List[float]]:
         """Create embeddings for a user's skills and interests"""
