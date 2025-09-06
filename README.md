@@ -1,3 +1,10 @@
+## 📹 Demo Video
+
+Showcase your project in action! Add your demo video link below:
+
+**Demo:** [Watch Now](https://drive.google.com/file/d/1SRfU6WVLjJjGreSSgzC2_4hWiotfBR3a/view?usp=sharing)
+
+
 # QuickSync - Team Matchmaking Platform
 
 QuickSync is a full-stack web application designed for team matchmaking at hackathons and collaboration events. It uses AI-powered matching to connect developers, designers, and innovators based on their skills, interests, and availability.
@@ -8,13 +15,6 @@ QuickSync is a full-stack web application designed for team matchmaking at hacka
 - **Smart Matchmaking**: AI-powered teammate suggestions using Hugging Face sentence transformers
 - **One-Click Team Invites**: Send instant team invitations with personalized messages
 - **Availability Heatmap**: Visual weekly schedule comparison between users
-- **Skill-based Project Suggestions**: Get project ideas tailored to your skill set
-- **Real-time Team Management**: Create, join, and manage teams seamlessly
-
-### User Experience
-- **Firebase Authentication**: Secure login with Google authentication
-- **Responsive Design**: Built with Chakra UI for mobile-first experience
-- **User Profiles**: Comprehensive profiles with skills, interests, and event preferences
 - **Team Discovery**: Browse and join existing teams or create your own
 
 ## 🛠 Tech Stack
@@ -63,60 +63,105 @@ quicksync/
 
 ## 🚦 Getting Started
 
-### Prerequisites
-- Python 3.8+
-- Node.js 16+
-- Git
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-repo/Quick-Sync-3.git
+cd Quick-Sync-3
+```
 
-### Backend Setup
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-repo/quicksync.git
-   cd quicksync
-   ```
+### 2. Backend Setup (Django)
+#### a. Create Python Virtual Environment
+```bash
+python3 -m venv quicksync_env
+source quicksync_env/bin/activate  # On Windows: quicksync_env\Scripts\activate
+```
 
-2. **Set up Python virtual environment**
-   ```bash
-   python -m venv quicksync_env
-   source quicksync_env/bin/activate  # On Windows: quicksync_env\Scripts\activate
-   ```
+#### b. Install Python Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-3. **Install Python dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+#### c. Database Setup
+```bash
+cd backend
+python manage.py makemigrations
+python manage.py migrate
+```
 
-4. **Set up Django**
-   ```bash
-   cd backend
-   python manage.py makemigrations
-   python manage.py migrate
-   python manage.py createsuperuser
-   ```
+#### d. Create Superuser (optional, for admin access)
+```bash
+python manage.py createsuperuser
+```
 
-5. **Run the Django development server**
-   ```bash
-   python manage.py runserver
-   ```
-   The API will be available at `http://localhost:8000`
+#### e. Run Development Server
+```bash
+python manage.py runserver
+```
+API available at `http://localhost:8000`
 
-### Frontend Setup
-1. **Install Node.js dependencies**
-   ```bash
-   cd frontend
-   npm install
-   ```
+### 3. Frontend Setup (React)
+#### a. Install Node.js Dependencies
+```bash
+cd frontend
+npm install
+```
 
-2. **Configure Firebase**
-   - Create a Firebase project at https://console.firebase.google.com
-   - Enable Google Authentication
-   - Copy your Firebase config to `src/config.js`
+#### b. Firebase Integration
+- Go to [Firebase Console](https://console.firebase.google.com)
+- Create a new project
+- Enable Google Authentication (Authentication > Sign-in method > Google)
+- Get your Firebase config object (Project settings > General > Your apps)
+- Add your config to `frontend/src/config.js`:
+```js
+export const firebaseConfig = {
+   apiKey: "...",
+   authDomain: "...",
+   projectId: "...",
+   storageBucket: "...",
+   messagingSenderId: "...",
+   appId: "..."
+};
+```
 
-3. **Start the React development server**
-   ```bash
-   npm start
-   ```
-   The app will be available at `http://localhost:3000`
+#### c. Start React Development Server
+```bash
+npm start
+```
+App available at `http://localhost:3000`
+
+### 4. Environment Variables
+
+#### Backend (.env or environment)
+```
+SECRET_KEY=your-django-secret-key
+DEBUG=True
+DATABASE_URL=sqlite:///db.sqlite3  # Or PostgreSQL for production
+FIREBASE_ADMIN_SDK_PATH=path/to/firebase-admin-sdk.json
+```
+
+#### Frontend
+Firebase config is set in `src/config.js` (see above).
+
+### 5. Usage
+
+- **Login:** Use Google login to create/sync your profile
+- **Profile:** Edit your bio, skills, interests, and availability
+- **Matchmaking:** Search for teammates by skills/interests (case-insensitive), view project suggestions, send invites
+- **Teams:** Create/manage teams, send/accept invitations
+- **Availability:** Visualize and compare schedules
+
+### 6. Development & Testing
+
+- Backend: Use Django admin at `/admin` for direct DB access
+- Frontend: Hot-reload enabled with `npm start`
+- API endpoints documented above
+
+### 7. Production Deployment
+
+- Use PostgreSQL and set `DEBUG=False`
+- Build frontend: `npm run build`
+- Deploy Django with gunicorn/nginx
+- Configure Firebase for your production domain
 
 ## 📱 Application Pages
 
