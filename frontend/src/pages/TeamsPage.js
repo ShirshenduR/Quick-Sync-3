@@ -571,12 +571,13 @@ const TeamsPage = () => {
       const [myTeamsRes, allTeamsRes, invitationsRes] = await Promise.all([
         teamsAPI.getUserTeams(user?.uid), // Pass firebase_uid
         teamsAPI.getTeams(),
-        teamsAPI.getInvitations()
+        teamsAPI.getInvitations(user?.uid) // Pass firebase_uid for invitations
       ]);
-      
-      setMyTeams(myTeamsRes.data);
-      setAllTeams(allTeamsRes.data);
-      setInvitations(invitationsRes.data);
+      console.log('TeamsPage myTeams:', myTeamsRes.data);
+      console.log('TeamsPage allTeams:', allTeamsRes.data);
+  setMyTeams(myTeamsRes.data.results || []);
+  setAllTeams(allTeamsRes.data.results || []);
+  setInvitations(invitationsRes.data.results || []);
     } catch (err) {
       setError('Failed to load teams data');
       console.error(err);
@@ -612,7 +613,7 @@ const TeamsPage = () => {
 
   const handleRespondToInvitation = async (invitationId, action, role) => {
     try {
-      await teamsAPI.respondToInvitation(invitationId, action, role);
+      await teamsAPI.respondToInvitation(invitationId, action, role, user?.uid);
       toast({
         title: `Invitation ${action}ed!`,
         status: action === 'accept' ? 'success' : 'info',

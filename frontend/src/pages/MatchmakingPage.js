@@ -86,9 +86,10 @@ const UserProfileModal = ({ isOpen, onClose, profile }) => (
 const UserMatchCard = ({ match, onSendInvite, onShowProfile }) => {
   const [sending, setSending] = useState(false);
   const handleInvite = async () => {
+    console.log('Invite button clicked for user:', match);
     setSending(true);
     try {
-  await onSendInvite(match);
+      await onSendInvite(match);
     } finally {
       setSending(false);
     }
@@ -257,8 +258,9 @@ const MatchmakingPage = () => {
 
   const fetchUserTeams = async () => {
     try {
-      const response = await teamsAPI.getUserTeams();
-      setUserTeams(response.data);
+      const response = await teamsAPI.getUserTeams(user?.uid);
+      console.log('Fetched user teams:', response.data);
+      setUserTeams(Array.isArray(response.data?.results) ? response.data.results : []);
     } catch (err) {
       console.error('Failed to fetch user teams:', err);
     }
@@ -337,43 +339,108 @@ const MatchmakingPage = () => {
   };
 
   const handleSendInvite = async (targetUser) => {
-    // Find a team to invite from
-  if (Array.isArray(userTeams) && userTeams.length === 0) {
+    // Always show the modal, even if no valid team is found
+    if (!Array.isArray(userTeams) || userTeams.length === 0) {
       toast({
-        title: 'No teams available',
-        description: 'Create a team first to send invitations',
-        status: 'warning',
-        duration: 3000,
+        title: 'No valid team found',
+        description: 'Create a team first or check your team data.',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    }
+    console.log('Opening invite modal for user:', targetUser);
+    setInviteTargetUser(targetUser);
+    setInviteModalOpen(true);
+  };
+
+  // State for invite modal
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteTargetUser, setInviteTargetUser] = useState(null);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+
+  const handleConfirmInvite = async () => {
+    const team = userTeams.find(t => t.id === selectedTeamId);
+    if (!team || !inviteTargetUser) {
+      toast({
+        title: 'No valid team or user selected',
+        status: 'error',
+        duration: 4000,
         isClosable: true,
       });
       return;
     }
-
-    // For now, use the first team (in a real app, let user choose)
-    const team = userTeams[0];
     try {
-      await teamsAPI.sendInvitation(team.id, {
-        invitee_id: targetUser.id,
-        message: `Hi ${targetUser.first_name}! I think you'd be a great fit for our team "${team.name}". Want to join us?`,
-        firebase_uid: user?.uid // send inviter's firebase_uid
-      });
+      const payload = {
+        invitee_id: inviteTargetUser.id,
+        message: `Hi ${inviteTargetUser.first_name}! I think you'd be a great fit for our team "${team.name}". Want to join us?`,
+        firebase_uid: user?.uid
+      };
+      console.log('Sending invite payload:', payload);
+      const response = await teamsAPI.sendInvitation(team.id, payload);
+      console.log('Invite response:', response);
       toast({
         title: 'Invitation sent!',
-        description: `Sent team invite to ${targetUser.first_name}`,
+        description: `Sent team invite to ${inviteTargetUser.first_name} from team ${team.name}`,
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
+      setInviteModalOpen(false);
+      setInviteTargetUser(null);
+      setSelectedTeamId(null);
     } catch (err) {
+      console.error('Invite error:', err);
       toast({
         title: 'Failed to send invitation',
-        description: err.response?.data?.error || 'Please try again',
+        description: err.response?.data?.error || err.message || 'Please try again',
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
     }
   };
+  // Invite modal component
+// Invite modal component (move outside main component)
+const InviteTeamModal = ({ isOpen, onClose, teams, selectedTeamId, setSelectedTeamId, onConfirm }) => (
+  <Modal isOpen={isOpen} onClose={onClose} size="md">
+    <ModalOverlay />
+    <ModalContent>
+      <ModalHeader>Select Team to Send Invite</ModalHeader>
+      <ModalCloseButton />
+      <ModalBody>
+        <VStack spacing={4} align="stretch">
+          {(!Array.isArray(teams) || teams.length === 0) ? (
+            <>
+              <Text color="red.500">No valid team found. Please create a team first to send invitations.</Text>
+              <Button colorScheme="brand" isDisabled>Send Invite</Button>
+            </>
+          ) : (
+            <>
+              <Text>Select which team you want to send the invite from:</Text>
+              <select
+                value={selectedTeamId || ''}
+                onChange={e => setSelectedTeamId(Number(e.target.value))}
+              >
+                <option value="" disabled>Select a team</option>
+                {teams.map(team => (
+                  <option key={team.id} value={team.id}>{team.name}</option>
+                ))}
+              </select>
+              <Button
+                colorScheme="brand"
+                isDisabled={!selectedTeamId}
+                onClick={onConfirm}
+              >
+                Send Invite
+              </Button>
+            </>
+          )}
+        </VStack>
+      </ModalBody>
+    </ModalContent>
+  </Modal>
+);
 
   // Profile modal state
   const [isProfileOpen, setProfileOpen] = useState(false);
@@ -389,14 +456,23 @@ const MatchmakingPage = () => {
   };
 
   return (
-    <Container maxW="6xl" py={8}>
-      <VStack spacing={6} align="stretch">
-        <Box>
-          <Heading size="lg" mb={2}>Find Teammates</Heading>
-          <Text color="gray.600">
-            Discover the perfect teammates using AI-powered matching
-          </Text>
-        </Box>
+    <>
+      <InviteTeamModal
+        isOpen={inviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+        teams={userTeams}
+        selectedTeamId={selectedTeamId}
+        setSelectedTeamId={setSelectedTeamId}
+        onConfirm={handleConfirmInvite}
+      />
+      <Container maxW="6xl" py={8}>
+        <VStack spacing={6} align="stretch">
+          <Box>
+            <Heading size="lg" mb={2}>Find Teammates</Heading>
+            <Text color="gray.600">
+              Discover the perfect teammates using AI-powered matching
+            </Text>
+          </Box>
 
         <Tabs>
           <TabList>
@@ -557,6 +633,7 @@ const MatchmakingPage = () => {
         </Tabs>
       </VStack>
     </Container>
+    </>
   );
 };
 

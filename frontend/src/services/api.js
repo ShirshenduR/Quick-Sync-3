@@ -65,12 +65,12 @@ export const teamsAPI = {
   
   getUserTeams: (firebase_uid) => api.get(`/api/teams/my-teams/?firebase_uid=${firebase_uid}`),
   
-  getInvitations: () => api.get('/api/teams/invitations/'),
+  getInvitations: (firebase_uid) => api.get(`/api/teams/invitations/?firebase_uid=${firebase_uid}`),
   
   sendInvitation: (teamId, data) => api.post(`/api/teams/${teamId}/invite/`, data),
   
-  respondToInvitation: (invitationId, action, role) => 
-  api.post(`/api/teams/invitations/${invitationId}/respond/`, { action, role }),
+  respondToInvitation: (invitationId, action, role, firebase_uid) => 
+  api.post(`/api/teams/invitations/${invitationId}/respond/`, { action, role, firebase_uid }),
 };
 
 // Matchmaking API

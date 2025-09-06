@@ -3,16 +3,16 @@ import { extendTheme } from '@chakra-ui/react';
 // QuickSync Color Palette
 const colors = {
   brand: {
-    50: '#e8f5df',   // Lightest tint of primary accent
-    100: '#d0ffa2',  // Primary Accent (#D0FFA2)
-    200: '#b8e984',
-    300: '#a0d466',
-    400: '#88be48',
-    500: '#70a92a',  // Darker shade of primary accent
-    600: '#5e8f24',
-    700: '#4c751e',
-    800: '#3a5b18',
-    900: '#284112',  // Darkest shade
+    50: '#e6e8eb',   // Lightest tint of #152128
+    100: '#cfd3d8',
+    200: '#b7bec5',
+    300: '#5c82a2ff',
+    400: '#5d809dff',
+    500: '#476b89ff',
+    600: '#567994ff',
+    700: '#3f5566',
+    800: '#273053',
+    900: '#152128',  // Darkest brand color
   },
   gray: {
     50: '#f8f7f2',   // Text / Light Background (#F8F7F2)

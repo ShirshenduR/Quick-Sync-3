@@ -27,18 +27,22 @@ class TeamListCreateView(generics.ListCreateAPIView):
         return TeamSerializer
     
     def perform_create(self, serializer):
-        # Use firebase_uid for team creator
         firebase_uid = self.request.data.get('firebase_uid')
+        print('Creating team for firebase_uid:', firebase_uid)
         user = User.objects.filter(firebase_uid=firebase_uid).first() if firebase_uid else None
+        print('Team creator user:', user)
         if not user:
+            print('No valid user found for team creation')
             raise serializers.ValidationError({'creator': 'Valid creator (firebase_uid) required.'})
         team = serializer.save(creator=user)
+        print('Team created:', team)
         TeamMembership.objects.create(
             user=user,
             team=team,
             role='Team Leader',
             is_leader=True
         )
+        print('TeamMembership created for user:', user)
 
 
 class TeamDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -59,13 +63,19 @@ class UserTeamsView(generics.ListAPIView):
     permission_classes = []
 
     def get_queryset(self):
-        firebase_uid = self.request.data.get('firebase_uid') or self.request.query_params.get('firebase_uid')
+        firebase_uid = self.request.query_params.get('firebase_uid')
+        print('Fetching teams for firebase_uid:', firebase_uid)
         if not firebase_uid:
+            print('No firebase_uid provided')
             return Team.objects.none()
         user = User.objects.filter(firebase_uid=firebase_uid).first()
+        print('User found for teams:', user)
         if not user:
+            print('No user found for firebase_uid')
             return Team.objects.none()
-        return user.teams.all().order_by('-created_at')
+        teams = user.teams.all().order_by('-created_at')
+        print('Teams found:', list(teams))
+        return teams
 
 
 class TeamInvitationsView(generics.ListAPIView):
@@ -87,27 +97,38 @@ class TeamInvitationsView(generics.ListAPIView):
 @permission_classes([])
 def send_team_invitation(request, team_id):
     """Send a team invitation"""
+    print('Send invite request data:', request.data)
     team = get_object_or_404(Team, id=team_id)
+    print('Team found for invite:', team)
     firebase_uid = request.data.get('firebase_uid')
     inviter = User.objects.filter(firebase_uid=firebase_uid).first() if firebase_uid else None
+    print('Inviter user:', inviter)
     if not inviter:
+        print('No valid inviter found')
         return Response({'error': 'Valid inviter (firebase_uid) required.'}, status=status.HTTP_400_BAD_REQUEST)
-    # Check if inviter is a member of the team
     if not team.members.filter(id=inviter.id).exists():
+        print('Inviter is not a member of the team')
         return Response({'error': 'You must be a team member to send invitations'}, status=status.HTTP_403_FORBIDDEN)
     if team.is_full:
+        print('Team is already full')
         return Response({'error': 'Team is already full'}, status=status.HTTP_400_BAD_REQUEST)
     serializer = SendInvitationSerializer(data=request.data)
     if serializer.is_valid():
         invitee_id = serializer.validated_data['invitee_id']
         message = serializer.validated_data.get('message', '')
+        print('Invitee id:', invitee_id)
+        print('Invite message:', message)
         try:
             invitee = User.objects.get(id=invitee_id)
+            print('Invitee user:', invitee)
         except User.DoesNotExist:
+            print('Invitee user not found')
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         if team.members.filter(id=invitee_id).exists():
+            print('Invitee is already a team member')
             return Response({'error': 'User is already a team member'}, status=status.HTTP_400_BAD_REQUEST)
         if TeamInvitation.objects.filter(team=team, invitee=invitee).exists():
+            print('Invitation already sent to this user')
             return Response({'error': 'Invitation already sent to this user'}, status=status.HTTP_400_BAD_REQUEST)
         invitation = TeamInvitation.objects.create(
             team=team,
@@ -115,20 +136,32 @@ def send_team_invitation(request, team_id):
             invitee=invitee,
             message=message
         )
+        print('Invitation created:', invitation)
         serializer = TeamInvitationSerializer(invitation)
+        print('Serialized invitation:', serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    print('Invite serializer errors:', serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
 def respond_to_invitation(request, invitation_id):
     """Accept or decline a team invitation"""
-    invitation = get_object_or_404(
-        TeamInvitation, 
-        id=invitation_id, 
-        invitee=request.user
-    )
+    firebase_uid = request.data.get('firebase_uid')
+    print('Invitation response: firebase_uid:', firebase_uid)
+    user = None
+    if firebase_uid:
+        user = User.objects.filter(firebase_uid=firebase_uid).first()
+        print('Invitation response: user found:', user)
+    if not user:
+        print('Invitation response: No valid user found for firebase_uid')
+        return Response({'error': 'Valid firebase_uid required.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        invitation = TeamInvitation.objects.get(id=invitation_id, invitee=user)
+        print('Invitation response: invitation found:', invitation)
+    except TeamInvitation.DoesNotExist:
+        print('Invitation response: No invitation found for user:', user, 'and invitation_id:', invitation_id)
+        return Response({'error': 'Invitation not found for this user.'}, status=status.HTTP_403_FORBIDDEN)
     
     if invitation.status != TeamInvitation.PENDING:
         return Response(
@@ -148,7 +181,7 @@ def respond_to_invitation(request, invitation_id):
         
         # Add user to team
         TeamMembership.objects.create(
-            user=request.user,
+            user=user,
             team=invitation.team,
             role=request.data.get('role', '')
         )
