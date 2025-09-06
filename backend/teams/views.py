@@ -88,59 +88,35 @@ class TeamInvitationsView(generics.ListAPIView):
 def send_team_invitation(request, team_id):
     """Send a team invitation"""
     team = get_object_or_404(Team, id=team_id)
-    
-    # Check if user is a member of the team
-    if not team.members.filter(id=request.user.id).exists():
-        return Response(
-            {'error': 'You must be a team member to send invitations'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
-    # Check if team is full
+    firebase_uid = request.data.get('firebase_uid')
+    inviter = User.objects.filter(firebase_uid=firebase_uid).first() if firebase_uid else None
+    if not inviter:
+        return Response({'error': 'Valid inviter (firebase_uid) required.'}, status=status.HTTP_400_BAD_REQUEST)
+    # Check if inviter is a member of the team
+    if not team.members.filter(id=inviter.id).exists():
+        return Response({'error': 'You must be a team member to send invitations'}, status=status.HTTP_403_FORBIDDEN)
     if team.is_full:
-        return Response(
-            {'error': 'Team is already full'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
+        return Response({'error': 'Team is already full'}, status=status.HTTP_400_BAD_REQUEST)
     serializer = SendInvitationSerializer(data=request.data)
     if serializer.is_valid():
         invitee_id = serializer.validated_data['invitee_id']
         message = serializer.validated_data.get('message', '')
-        
         try:
             invitee = User.objects.get(id=invitee_id)
         except User.DoesNotExist:
-            return Response(
-                {'error': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Check if user is already in team
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         if team.members.filter(id=invitee_id).exists():
-            return Response(
-                {'error': 'User is already a team member'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Check if invitation already exists
+            return Response({'error': 'User is already a team member'}, status=status.HTTP_400_BAD_REQUEST)
         if TeamInvitation.objects.filter(team=team, invitee=invitee).exists():
-            return Response(
-                {'error': 'Invitation already sent to this user'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Create invitation
+            return Response({'error': 'Invitation already sent to this user'}, status=status.HTTP_400_BAD_REQUEST)
         invitation = TeamInvitation.objects.create(
             team=team,
-            inviter=request.user,
+            inviter=inviter,
             invitee=invitee,
             message=message
         )
-        
         serializer = TeamInvitationSerializer(invitation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
