@@ -88,7 +88,7 @@ const UserMatchCard = ({ match, onSendInvite, onShowProfile }) => {
   const handleInvite = async () => {
     setSending(true);
     try {
-      await onSendInvite(match.user);
+  await onSendInvite(match);
     } finally {
       setSending(false);
     }
@@ -100,32 +100,32 @@ const UserMatchCard = ({ match, onSendInvite, onShowProfile }) => {
           <HStack>
             <Avatar 
               size="md" 
-              name={`${match.user.first_name} ${match.user.last_name}`} 
+              name={`${match.first_name} ${match.last_name}`} 
               cursor="pointer"
-              onClick={() => onShowProfile(match.user)}
+              onClick={() => onShowProfile(match)}
             />
             <VStack align="start" spacing={1}>
-              <Text fontWeight="bold" cursor="pointer" onClick={() => onShowProfile(match.user)}>
-                {match.user.first_name} {match.user.last_name}
+              <Text fontWeight="bold" cursor="pointer" onClick={() => onShowProfile(match)}>
+                {match.first_name} {match.last_name}
               </Text>
-              <Text fontSize="sm" color="gray.600" cursor="pointer" onClick={() => onShowProfile(match.user)}>
-                @{match.user.username}
+              <Text fontSize="sm" color="gray.600" cursor="pointer" onClick={() => onShowProfile(match)}>
+                @{match.username}
               </Text>
             </VStack>
             <Badge colorScheme="green" ml="auto">
-              {Math.round(match.score * 100)}% Match
+              {isNaN(match.score) ? 0 : match.score}% Match
             </Badge>
           </HStack>
-          {match.user.bio && (
+          {match.bio && (
             <Text fontSize="sm" color="gray.700">
-              {match.user.bio}
+              {match.bio}
             </Text>
           )}
-          {Array.isArray(match.user.skills) && match.user.skills.length > 0 && (
+          {Array.isArray(match.skills) && match.skills.length > 0 && (
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Skills:</Text>
               <HStack wrap="wrap" spacing={1}>
-                {match.user.skills.map((skill, idx) => (
+                {match.skills.map((skill, idx) => (
                   <Tag key={idx} size="sm" colorScheme="blue">
                     {skill}
                   </Tag>
@@ -133,11 +133,11 @@ const UserMatchCard = ({ match, onSendInvite, onShowProfile }) => {
               </HStack>
             </Box>
           )}
-          {Array.isArray(match.user.interests) && match.user.interests.length > 0 && (
+          {Array.isArray(match.interests) && match.interests.length > 0 && (
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Interests:</Text>
               <HStack wrap="wrap" spacing={1}>
-                {match.user.interests.map((interest, idx) => (
+                {match.interests.map((interest, idx) => (
                   <Tag key={idx} size="sm" colorScheme="green">
                     {interest}
                   </Tag>
@@ -151,10 +151,13 @@ const UserMatchCard = ({ match, onSendInvite, onShowProfile }) => {
               <Text fontSize="xs" color="gray.500">Similarity Scores:</Text>
               <HStack spacing={3}>
                 <Text fontSize="xs">
-                  Skills: {Math.round(match.skills_similarity * 100)}%
+                  Skills: {isNaN(match.skills_similarity) ? 0 : match.skills_similarity}%
                 </Text>
                 <Text fontSize="xs">
-                  Interests: {Math.round(match.interests_similarity * 100)}%
+                  Interests: {isNaN(match.interests_similarity) ? 0 : match.interests_similarity}%
+                </Text>
+                <Text fontSize="xs">
+                  Combined: {isNaN(match.combined_similarity) ? 0 : match.combined_similarity}%
                 </Text>
               </HStack>
             </VStack>
@@ -229,6 +232,7 @@ const ProjectSuggestionCard = ({ project }) => (
 );
 
 const MatchmakingPage = () => {
+  const { user } = useAuth();
   const toast = useToast();
   const [matches, setMatches] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -297,7 +301,12 @@ const MatchmakingPage = () => {
         limit: 20
       });
       
-      setMatches(response.data);
+      let matches = response.data || [];
+      // Filter out current user from matches
+      if (user && user.uid) {
+        matches = matches.filter(m => m.firebase_uid !== user.uid);
+      }
+      setMatches(matches);
       
   if (Array.isArray(response.data) && response.data.length === 0) {
         toast({

@@ -23,31 +23,66 @@ class FindMatchesView(generics.GenericAPIView):
     
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
+        print(request.data)
         if serializer.is_valid():
             matching_service = MatchingService()
 
-            firebase_uid = request.data.get('firebase_uid')
-            user = User.objects.filter(firebase_uid=firebase_uid).first() if firebase_uid else None
-            if not user:
-                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            # Use skills/interests from POST data for matching
+            skills = serializer.validated_data.get('skills', [])
+            interests = serializer.validated_data.get('interests', [])
+            limit = serializer.validated_data['limit']
 
-            # Get matches for user
-            matches = matching_service.find_matches(
-                user=user,
-                limit=serializer.validated_data['limit']
-            )
+            # Find matches based on provided skills/interests
+            matches = matching_service.find_matches_by_query(skills=skills, interests=interests, limit=limit)
+            print('Found matches:', matches)
 
-            # Log matching session
-            MatchingSession.objects.create(
-                user=user,
-                query_skills=serializer.validated_data.get('skills', []),
-                query_interests=serializer.validated_data.get('interests', []),
-                results_count=len(matches)
-            )
+            # Log matching session only if user field is nullable, otherwise skip logging for anonymous search
+            from matchmaking.models import MatchingSession
+            user_field = MatchingSession._meta.get_field('user')
+            if user_field.null:
+                MatchingSession.objects.create(
+                    user=None,
+                    query_skills=skills,
+                    query_interests=interests,
+                    results_count=len(matches)
+                )
 
-            # Serialize results
-            result_serializer = MatchResultSerializer(matches, many=True)
-            return Response(result_serializer.data)
+            # Serialize results: ensure we return user data for frontend
+            # If matches are user objects, get similarity scores from MatchingService
+            # If matches are dicts with scores, pass through
+            results = []
+            for match in matches:
+                if isinstance(match, dict) and 'user' in match:
+                    from accounts.serializers import UserSerializer
+                    user_info = UserSerializer(match['user']).data
+                    # Convert similarity scores to percentage
+                    skills_sim = match.get('skills_similarity', 0.0)
+                    interests_sim = match.get('interests_similarity', 0.0)
+                    combined_sim = match.get('combined_similarity', 0.0)
+                    score = match.get('score', 0.0)
+                    def clamp(val):
+                        # Always round to nearest integer, then clamp to 0-100
+                        return max(0, min(100, int(round(val * 100))))
+                    results.append({
+                        **user_info,
+                        'skills_similarity': clamp(skills_sim),
+                        'interests_similarity': clamp(interests_sim),
+                        'combined_similarity': clamp(combined_sim),
+                        'score': clamp(score)
+                    })
+                else:
+                    # If just user object, serialize
+                    from accounts.serializers import UserSerializer
+                    user_info = UserSerializer(match).data
+                    results.append({
+                        **user_info,
+                        'skills_similarity': 0,
+                        'interests_similarity': 0,
+                        'combined_similarity': 0,
+                        'score': 0
+                    })
+            print('Match results:', results)
+            return Response(results)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

@@ -12,6 +12,64 @@ User = get_user_model()
 
 
 class MatchingService:
+    def cosine_similarity(self, a, b):
+        """Compute cosine similarity between two vectors."""
+        import numpy as np
+        a = np.array(a)
+        b = np.array(b)
+        if np.linalg.norm(a) == 0 or np.linalg.norm(b) == 0:
+            return 0.0
+        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+    def find_matches_by_query(self, skills=None, interests=None, limit=20):
+        # If no query, return empty list
+        if not skills and not interests:
+            return []
+
+        # Get all users except those with empty skills/interests
+        users = User.objects.all()
+        candidates = []
+        for user in users:
+            user_skills = getattr(user, 'skills', []) or []
+            user_interests = getattr(user, 'interests', []) or []
+            if user_skills or user_interests:
+                candidates.append(user)
+
+        # Compute Jaccard similarity for skills and interests
+        def jaccard(query, user):
+            set_query, set_user = set(query), set(user)
+            if not set_query:
+                return 0.0
+            intersection = set_query & set_user
+            # Use only the number of searched items for denominator
+            return float(len(intersection)) / float(len(set_query))
+
+        results = []
+        for user in candidates:
+            user_skills = getattr(user, 'skills', []) or []
+            user_interests = getattr(user, 'interests', []) or []
+            skills_similarity = jaccard(skills, user_skills)
+            interests_similarity = jaccard(interests, user_interests)
+            # Combined: average of both if both provided, else whichever is present
+            if skills and interests:
+                combined_similarity = (skills_similarity + interests_similarity) / 2
+            elif skills:
+                combined_similarity = skills_similarity
+            elif interests:
+                combined_similarity = interests_similarity
+            else:
+                combined_similarity = 0.0
+            score = combined_similarity
+            results.append({
+                'user': user,
+                'skills_similarity': skills_similarity,
+                'interests_similarity': interests_similarity,
+                'combined_similarity': combined_similarity,
+                'score': score
+            })
+
+        # Sort by score and return top N
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results[:limit]
     """Service for AI-powered user matching"""
     def __init__(self):
         # Use real Hugging Face model
