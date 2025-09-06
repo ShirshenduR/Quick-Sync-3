@@ -93,6 +93,11 @@ const UserMatchCard = ({ match, onSendInvite, onShowProfile }) => {
       setSending(false);
     }
   };
+  if (!match || !match.first_name || !match.last_name || !match.username) {
+    return (
+      <Card><CardBody><Text color="red.500">Invalid user data</Text></CardBody></Card>
+    );
+  }
   return (
     <Card>
       <CardBody>
@@ -346,13 +351,12 @@ const MatchmakingPage = () => {
 
     // For now, use the first team (in a real app, let user choose)
     const team = userTeams[0];
-    
     try {
       await teamsAPI.sendInvitation(team.id, {
         invitee_id: targetUser.id,
-        message: `Hi ${targetUser.first_name}! I think you'd be a great fit for our team "${team.name}". Want to join us?`
+        message: `Hi ${targetUser.first_name}! I think you'd be a great fit for our team "${team.name}". Want to join us?`,
+        firebase_uid: user?.uid // send inviter's firebase_uid
       });
-      
       toast({
         title: 'Invitation sent!',
         description: `Sent team invite to ${targetUser.first_name}`,
