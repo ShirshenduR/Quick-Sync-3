@@ -2,12 +2,12 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, Spinner, Center, Text } from '@chakra-ui/react';
 import { useAuth } from './contexts/AuthContext';
-import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import MatchmakingPage from './pages/MatchmakingPage';
 import TeamsPage from './pages/TeamsPage';
 import HeatmapPage from './pages/HeatmapPage';
+import Navbar from './components/Navbar';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -59,8 +59,7 @@ function App() {
 
   return (
     <Box minH="100vh" bg="gray.50">
-      {user && <Navbar />}
-      
+      <Navbar />
       <Routes>
         <Route 
           path="/login" 

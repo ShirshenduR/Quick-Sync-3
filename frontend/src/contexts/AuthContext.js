@@ -69,9 +69,9 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         setError(null);
-        if (firebaseUser) {
+        if (firebaseUser && firebaseUser.uid) {
           // Sync with Django backend
-          const response = await fetch(`${API_BASE_URL}/auth/sync-firebase/`, {
+          const response = await fetch(`${API_BASE_URL}/api/auth/sync-firebase/`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

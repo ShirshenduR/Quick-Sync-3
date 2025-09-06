@@ -10,42 +10,70 @@ from .serializers import (
     MatchingQuerySerializer, ProjectSuggestionSerializer
 )
 
+# Hugging Face-powered recommendations endpoint
+from rest_framework.decorators import api_view
+
 User = get_user_model()
 
 
 class FindMatchesView(generics.GenericAPIView):
     """Find matching users based on skills and interests"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = []
     serializer_class = MatchingQuerySerializer
     
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             matching_service = MatchingService()
-            
-            # Get matches for current user
+
+            firebase_uid = request.data.get('firebase_uid')
+            user = User.objects.filter(firebase_uid=firebase_uid).first() if firebase_uid else None
+            if not user:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Get matches for user
             matches = matching_service.find_matches(
-                user=request.user,
+                user=user,
                 limit=serializer.validated_data['limit']
             )
-            
+
             # Log matching session
             MatchingSession.objects.create(
-                user=request.user,
+                user=user,
                 query_skills=serializer.validated_data.get('skills', []),
                 query_interests=serializer.validated_data.get('interests', []),
                 results_count=len(matches)
             )
-            
+
             # Serialize results
             result_serializer = MatchResultSerializer(matches, many=True)
             return Response(result_serializer.data)
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+# --- Hugging Face Recommendations Endpoint ---
+@api_view(["GET"])
+def get_recommendations(request):
+    """Return recommended users for a given Firebase UID using embedding similarity."""
+    firebase_uid = request.GET.get("uid")
+    if not firebase_uid:
+        return Response({"error": "Missing uid parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(firebase_uid=firebase_uid)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    matching_service = MatchingService()
+    matches = matching_service.find_matches(user, limit=10)
+    serializer = MatchResultSerializer(matches, many=True)
+    return Response(serializer.data)
+
+
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([])
 def get_availability_overlap(request, user_id):
     """Get availability overlap with another user"""
     try:
@@ -67,27 +95,32 @@ def get_availability_overlap(request, user_id):
 
 
 class ProjectSuggestionsView(generics.ListAPIView):
-    """Get project suggestions based on user skills"""
+    """Get project suggestions based on user skills (public)"""
     serializer_class = ProjectSuggestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
+    permission_classes = []
+
     def get_queryset(self):
-        user = self.request.user
-        user_skills = set(user.skills) if user.skills else set()
-        
+        user_skills = set()
+        # Try to get firebase_uid from request
+        firebase_uid = self.request.data.get('firebase_uid') or self.request.query_params.get('firebase_uid')
+        if firebase_uid:
+            user = User.objects.filter(firebase_uid=firebase_uid).first()
+            if user and user.skills:
+                user_skills = set(user.skills)
+
         if not user_skills:
             # Return general suggestions if user has no skills
             return ProjectSuggestion.objects.all()[:10]
-        
+
         # Find projects that match user skills
         matching_projects = []
         for project in ProjectSuggestion.objects.all():
             project_skills = set(project.required_skills)
             skill_overlap = len(user_skills.intersection(project_skills))
-            
+
             if skill_overlap > 0:
                 matching_projects.append((project, skill_overlap))
-        
+
         # Sort by skill overlap
         matching_projects.sort(key=lambda x: x[1], reverse=True)
         return [project for project, _ in matching_projects[:10]]
@@ -152,15 +185,9 @@ SAMPLE_PROJECTS = [
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([])
 def populate_sample_projects(request):
-    """Populate database with sample project suggestions (dev only)"""
-    if not request.user.is_staff:
-        return Response(
-            {'error': 'Only staff users can populate sample data'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
+    """Populate database with sample project suggestions (dev only, public)"""
     created_count = 0
     for project_data in SAMPLE_PROJECTS:
         project, created = ProjectSuggestion.objects.get_or_create(
@@ -169,7 +196,7 @@ def populate_sample_projects(request):
         )
         if created:
             created_count += 1
-    
+
     return Response({
         'message': f'{created_count} sample projects created',
         'total_projects': ProjectSuggestion.objects.count()

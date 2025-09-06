@@ -50,7 +50,8 @@ const ProfilePage = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await authAPI.getProfile();
+      if (!user?.uid) throw new Error('No user UID available');
+      const response = await authAPI.getProfile(user.uid);
       setProfile(response.data);
     } catch (err) {
       setError('Failed to load profile');
@@ -94,7 +95,8 @@ const ProfilePage = () => {
       setLoading(true);
       setError(null);
       
-      await authAPI.updateProfile(profile);
+  if (!user?.uid) throw new Error('No user UID available');
+  await authAPI.updateProfile(user.uid, profile);
       
       toast({
         title: 'Profile updated successfully!',
@@ -221,7 +223,7 @@ const ProfilePage = () => {
                   </Button>
                 </HStack>
                 
-                {profile.skills.length > 0 && (
+                {Array.isArray(profile.skills) && profile.skills.length > 0 && (
                   <HStack wrap="wrap" spacing={2}>
                     {profile.skills.map((skill, index) => (
                       <Tag key={index} colorScheme="blue" variant="solid">
@@ -255,7 +257,7 @@ const ProfilePage = () => {
                   </Button>
                 </HStack>
                 
-                {profile.interests.length > 0 && (
+                {Array.isArray(profile.interests) && profile.interests.length > 0 && (
                   <HStack wrap="wrap" spacing={2}>
                     {profile.interests.map((interest, index) => (
                       <Tag key={index} colorScheme="green" variant="solid">
@@ -289,7 +291,7 @@ const ProfilePage = () => {
                   </Button>
                 </HStack>
                 
-                {profile.event_tags.length > 0 && (
+                {Array.isArray(profile.event_tags) && profile.event_tags.length > 0 && (
                   <HStack wrap="wrap" spacing={2}>
                     {profile.event_tags.map((tag, index) => (
                       <Tag key={index} colorScheme="purple" variant="solid">

@@ -33,7 +33,7 @@ const NavLink = ({ to, children, isActive }) => (
 );
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, signInWithGoogle } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const bg = useColorModeValue('white', 'gray.800');
@@ -81,30 +81,41 @@ const Navbar = () => {
 
         <Spacer />
 
-        {/* User Menu */}
-        <Menu>
-          <MenuButton as={Button} variant="ghost" size="sm">
-            <HStack spacing={2}>
-              <Avatar size="sm" src={user?.photoURL} name={user?.displayName || user?.email} />
-              <Text display={{ base: 'none', md: 'block' }}>
-                {user?.displayName || user?.email}
-              </Text>
-              <ChevronDownIcon />
-            </HStack>
-          </MenuButton>
-          <MenuList>
-            <MenuItem as={RouterLink} to="/profile">
-              Profile Settings
-            </MenuItem>
-            <MenuItem as={RouterLink} to="/teams">
-              My Teams
-            </MenuItem>
-            <MenuDivider />
-            <MenuItem onClick={handleLogout} color="red.500">
-              Logout
-            </MenuItem>
-          </MenuList>
-        </Menu>
+        {/* User/Login Button */}
+        {user ? (
+          <Menu>
+            <MenuButton as={Button} variant="ghost" size="sm">
+              <HStack spacing={2}>
+                <Avatar size="sm" src={user?.photoURL} name={user?.displayName || user?.email} />
+                <Text display={{ base: 'none', md: 'block' }}>
+                  {user?.displayName || user?.email}
+                </Text>
+                <ChevronDownIcon />
+              </HStack>
+            </MenuButton>
+            <MenuList>
+              <MenuItem as={RouterLink} to="/profile">
+                Profile Settings
+              </MenuItem>
+              <MenuItem as={RouterLink} to="/teams">
+                My Teams
+              </MenuItem>
+              <MenuDivider />
+              <MenuItem onClick={handleLogout} color="red.500">
+                Logout
+              </MenuItem>
+            </MenuList>
+          </Menu>
+        ) : (
+          <Button
+            colorScheme="brand"
+            variant="solid"
+            size="sm"
+            onClick={signInWithGoogle}
+          >
+            Login
+          </Button>
+        )}
 
         {/* Mobile menu button */}
         <Menu>

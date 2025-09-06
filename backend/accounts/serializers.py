@@ -21,7 +21,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class UserMatchSerializer(serializers.ModelSerializer):
     """Serializer for matching purposes with minimal data"""
+    firebase_uid = serializers.CharField(allow_blank=True, allow_null=True)
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 
-                 'bio', 'skills', 'interests', 'event_tags']
+                 'bio', 'skills', 'interests', 'event_tags', 'firebase_uid']

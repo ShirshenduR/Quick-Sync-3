@@ -47,8 +47,65 @@ import {
   MenuItem
 } from '@chakra-ui/react';
 import { ChevronDownIcon, AddIcon, SettingsIcon } from '@chakra-ui/icons';
-import { teamsAPI } from '../services/api';
+import { teamsAPI, matchmakingAPI, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+
+// UserProfileModal: shows a user's profile in a modal popup
+const UserProfileModal = ({ isOpen, onClose, profile, loading, error }) => (
+  <Modal isOpen={isOpen} onClose={onClose} size="lg">
+    <ModalOverlay />
+    <ModalContent>
+      <ModalHeader>User Profile</ModalHeader>
+      <ModalCloseButton />
+      <ModalBody>
+        {loading ? (
+          <Center py={8}>
+            <Spinner size="lg" color="brand.500" />
+            <Text>Loading profile...</Text>
+          </Center>
+        ) : error ? (
+          <Alert status="error">
+            <AlertIcon />
+            {error}
+          </Alert>
+        ) : profile ? (
+          <VStack align="start" spacing={4}>
+            <HStack spacing={4} align="center">
+              <Avatar name={profile.first_name + ' ' + profile.last_name} size="lg" />
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="bold" fontSize="lg">{profile.first_name} {profile.last_name}</Text>
+                <Text fontSize="md" color="gray.600">@{profile.username}</Text>
+              </VStack>
+            </HStack>
+            <Divider />
+            <Text fontWeight="medium">Bio:</Text>
+            <Text color="gray.700">{profile.bio || 'No bio provided.'}</Text>
+            <Text fontWeight="medium">Skills:</Text>
+            <HStack wrap="wrap" spacing={2}>
+              {Array.isArray(profile.skills) && profile.skills.length > 0 ? (
+                profile.skills.map((skill, idx) => (
+                  <Tag key={idx} colorScheme="blue">{skill}</Tag>
+                ))
+              ) : (
+                <Text color="gray.500">No skills listed.</Text>
+              )}
+            </HStack>
+            <Text fontWeight="medium">Interests:</Text>
+            <HStack wrap="wrap" spacing={2}>
+              {Array.isArray(profile.interests) && profile.interests.length > 0 ? (
+                profile.interests.map((interest, idx) => (
+                  <Tag key={idx} colorScheme="purple">{interest}</Tag>
+                ))
+              ) : (
+                <Text color="gray.500">No interests listed.</Text>
+              )}
+            </HStack>
+          </VStack>
+        ) : null}
+      </ModalBody>
+    </ModalContent>
+  </Modal>
+);
 
 const TeamCard = ({ team, isOwn = false, onUpdate }) => {
   const [responding, setResponding] = useState(false);
@@ -91,7 +148,7 @@ const TeamCard = ({ team, isOwn = false, onUpdate }) => {
             </Text>
           )}
           
-          {team.required_skills && team.required_skills.length > 0 && (
+          {Array.isArray(team.required_skills) && team.required_skills.length > 0 && (
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Required Skills:</Text>
               <HStack wrap="wrap" spacing={1}>
@@ -104,7 +161,7 @@ const TeamCard = ({ team, isOwn = false, onUpdate }) => {
             </Box>
           )}
           
-          {team.event_tags && team.event_tags.length > 0 && (
+          {Array.isArray(team.event_tags) && team.event_tags.length > 0 && (
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Event Tags:</Text>
               <HStack wrap="wrap" spacing={1}>
@@ -117,7 +174,7 @@ const TeamCard = ({ team, isOwn = false, onUpdate }) => {
             </Box>
           )}
           
-          {team.memberships && team.memberships.length > 0 && (
+          {Array.isArray(team.memberships) && team.memberships.length > 0 && (
             <Box w="full">
               <Text fontSize="sm" fontWeight="medium" mb={2}>Team Members:</Text>
               <VStack align="start" spacing={2} w="full">
@@ -365,7 +422,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
                     Add
                   </Button>
                 </HStack>
-                {formData.required_skills.length > 0 && (
+                {Array.isArray(formData.required_skills) && formData.required_skills.length > 0 && (
                   <HStack wrap="wrap" spacing={1}>
                     {formData.required_skills.map((skill, idx) => (
                       <Tag key={idx} size="sm" colorScheme="blue">
@@ -405,7 +462,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
                     Add
                   </Button>
                 </HStack>
-                {formData.event_tags.length > 0 && (
+                {Array.isArray(formData.event_tags) && formData.event_tags.length > 0 && (
                   <HStack wrap="wrap" spacing={1}>
                     {formData.event_tags.map((tag, idx) => (
                       <Tag key={idx} size="sm" colorScheme="purple">
@@ -463,15 +520,56 @@ const TeamsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Recommendations state
+  const [recommendations, setRecommendations] = useState([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState(null);
+
+  // Modal for recommended user profile
+  const { isOpen: isProfileOpen, onOpen: openProfile, onClose: closeProfile } = useDisclosure();
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(null);
+  const handleShowProfile = async (uid) => {
+    if (!uid || uid === 'null' || uid === 'undefined') return;
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const res = await authAPI.getProfile(uid);
+      setSelectedProfile(res.data);
+      openProfile();
+    } catch (err) {
+      setProfileError('Failed to load profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const fetchRecommendations = React.useCallback(async () => {
+    if (!user?.uid) return;
+    setLoadingRecommendations(true);
+    setRecommendationsError(null);
+    try {
+      const res = await matchmakingAPI.getRecommendations(user.uid);
+      setRecommendations(res.data);
+    } catch (err) {
+      setRecommendationsError('Failed to load recommendations');
+      console.error(err);
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  }, [user?.uid]);
+
   useEffect(() => {
     fetchData();
-  }, []);
+    fetchRecommendations();
+  }, [fetchRecommendations]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [myTeamsRes, allTeamsRes, invitationsRes] = await Promise.all([
-        teamsAPI.getUserTeams(),
+        teamsAPI.getUserTeams(user?.uid), // Pass firebase_uid
         teamsAPI.getTeams(),
         teamsAPI.getInvitations()
       ]);
@@ -487,9 +585,12 @@ const TeamsPage = () => {
     }
   };
 
+
   const handleCreateTeam = async (teamData) => {
     try {
-      await teamsAPI.createTeam(teamData);
+      // Ensure firebase_uid is sent for creator
+      const payload = { ...teamData, firebase_uid: user?.uid };
+      await teamsAPI.createTeam(payload);
       toast({
         title: 'Team created successfully!',
         status: 'success',
@@ -569,15 +670,16 @@ const TeamsPage = () => {
 
         <Tabs>
           <TabList>
-            <Tab>My Teams ({myTeams.length})</Tab>
-            <Tab>All Teams ({allTeams.length})</Tab>
-            <Tab>Invitations ({invitations.filter(inv => inv.status === 'pending').length})</Tab>
+            <Tab>My Teams ({Array.isArray(myTeams) ? myTeams.length : 0})</Tab>
+            <Tab>All Teams ({Array.isArray(allTeams) ? allTeams.length : 0})</Tab>
+            <Tab>Invitations ({Array.isArray(invitations) ? invitations.filter(inv => inv.status === 'pending').length : 0})</Tab>
+              <Tab>Recommendations</Tab>
           </TabList>
 
           <TabPanels>
             <TabPanel>
               <VStack spacing={4} align="stretch">
-                {myTeams.length > 0 ? (
+                {Array.isArray(myTeams) && myTeams.length > 0 ? (
                   myTeams.map((team, idx) => (
                     <TeamCard 
                       key={idx} 
@@ -601,7 +703,7 @@ const TeamsPage = () => {
 
             <TabPanel>
               <VStack spacing={4} align="stretch">
-                {allTeams.length > 0 ? (
+                {Array.isArray(allTeams) && allTeams.length > 0 ? (
                   allTeams.map((team, idx) => (
                     <TeamCard key={idx} team={team} onUpdate={fetchData} />
                   ))
@@ -615,7 +717,7 @@ const TeamsPage = () => {
 
             <TabPanel>
               <VStack spacing={4} align="stretch">
-                {invitations.length > 0 ? (
+                {Array.isArray(invitations) && invitations.length > 0 ? (
                   invitations.map((invitation, idx) => (
                     <InvitationCard
                       key={idx}
@@ -630,6 +732,50 @@ const TeamsPage = () => {
                 )}
               </VStack>
             </TabPanel>
+
+              <TabPanel>
+                <VStack spacing={4} align="stretch">
+                  {loadingRecommendations ? (
+                    <Center py={8}>
+                      <Spinner size="lg" color="brand.500" />
+                      <Text>Loading recommendations...</Text>
+                    </Center>
+                  ) : recommendationsError ? (
+                    <Alert status="error">
+                      <AlertIcon />
+                      {recommendationsError}
+                    </Alert>
+                  ) : Array.isArray(recommendations) && recommendations.length > 0 ? (
+                    <>
+                      {recommendations.map((rec, idx) => (
+                        <Card key={idx} _hover={{ boxShadow: 'md', cursor: 'pointer' }} onClick={() => handleShowProfile(rec.user?.firebase_uid)}>
+                          <CardBody>
+                            <HStack spacing={4} align="center">
+                              <Avatar name={rec.user?.first_name + ' ' + rec.user?.last_name} />
+                              <VStack align="start" spacing={1} flex={1}>
+                                <Text fontWeight="bold">{rec.user?.first_name} {rec.user?.last_name}</Text>
+                                <Text fontSize="sm" color="gray.600">Score: {rec.score?.toFixed(2)}</Text>
+                                <Text fontSize="xs" color="gray.500">Skills similarity: {rec.skills_similarity?.toFixed(2)}, Interests similarity: {rec.interests_similarity?.toFixed(2)}</Text>
+                              </VStack>
+                            </HStack>
+                          </CardBody>
+                        </Card>
+                      ))}
+                      <UserProfileModal
+                        isOpen={isProfileOpen}
+                        onClose={closeProfile}
+                        profile={selectedProfile}
+                        loading={profileLoading}
+                        error={profileError}
+                      />
+                    </>
+                  ) : (
+                    <Center py={8}>
+                      <Text color="gray.500">No recommendations found</Text>
+                    </Center>
+                  )}
+                </VStack>
+              </TabPanel>
           </TabPanels>
         </Tabs>
 

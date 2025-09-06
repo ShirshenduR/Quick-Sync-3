@@ -22,18 +22,69 @@ import {
   Tabs,
   TabList,
   TabPanels,
-  Tab,
   TabPanel,
-  Progress,
+  Tab,
   Alert,
-  AlertIcon
+  AlertIcon,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
 } from '@chakra-ui/react';
 import { matchmakingAPI, teamsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-const UserMatchCard = ({ match, onSendInvite }) => {
+// UserProfileModal: shows a user's profile in a modal popup
+const UserProfileModal = ({ isOpen, onClose, profile }) => (
+  <Modal isOpen={isOpen} onClose={onClose} size="lg">
+    <ModalOverlay />
+    <ModalContent>
+      <ModalHeader>User Profile</ModalHeader>
+      <ModalCloseButton />
+      <ModalBody>
+        {profile ? (
+          <VStack align="start" spacing={4}>
+            <HStack spacing={4} align="center">
+              <Avatar name={profile.first_name + ' ' + profile.last_name} size="lg" />
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="bold" fontSize="lg">{profile.first_name} {profile.last_name}</Text>
+                <Text fontSize="md" color="gray.600">@{profile.username}</Text>
+              </VStack>
+            </HStack>
+            <Divider />
+            <Text fontWeight="medium">Bio:</Text>
+            <Text color="gray.700">{profile.bio || 'No bio provided.'}</Text>
+            <Text fontWeight="medium">Skills:</Text>
+            <HStack wrap="wrap" spacing={2}>
+              {Array.isArray(profile.skills) && profile.skills.length > 0 ? (
+                profile.skills.map((skill, idx) => (
+                  <Tag key={idx} colorScheme="blue">{skill}</Tag>
+                ))
+              ) : (
+                <Text color="gray.500">No skills listed.</Text>
+              )}
+            </HStack>
+            <Text fontWeight="medium">Interests:</Text>
+            <HStack wrap="wrap" spacing={2}>
+              {Array.isArray(profile.interests) && profile.interests.length > 0 ? (
+                profile.interests.map((interest, idx) => (
+                  <Tag key={idx} colorScheme="purple">{interest}</Tag>
+                ))
+              ) : (
+                <Text color="gray.500">No interests listed.</Text>
+              )}
+            </HStack>
+          </VStack>
+        ) : null}
+      </ModalBody>
+    </ModalContent>
+  </Modal>
+);
+
+const UserMatchCard = ({ match, onSendInvite, onShowProfile }) => {
   const [sending, setSending] = useState(false);
-  
   const handleInvite = async () => {
     setSending(true);
     try {
@@ -42,7 +93,6 @@ const UserMatchCard = ({ match, onSendInvite }) => {
       setSending(false);
     }
   };
-
   return (
     <Card>
       <CardBody>
@@ -51,12 +101,14 @@ const UserMatchCard = ({ match, onSendInvite }) => {
             <Avatar 
               size="md" 
               name={`${match.user.first_name} ${match.user.last_name}`} 
+              cursor="pointer"
+              onClick={() => onShowProfile(match.user)}
             />
             <VStack align="start" spacing={1}>
-              <Text fontWeight="bold">
+              <Text fontWeight="bold" cursor="pointer" onClick={() => onShowProfile(match.user)}>
                 {match.user.first_name} {match.user.last_name}
               </Text>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="gray.600" cursor="pointer" onClick={() => onShowProfile(match.user)}>
                 @{match.user.username}
               </Text>
             </VStack>
@@ -64,14 +116,12 @@ const UserMatchCard = ({ match, onSendInvite }) => {
               {Math.round(match.score * 100)}% Match
             </Badge>
           </HStack>
-          
           {match.user.bio && (
             <Text fontSize="sm" color="gray.700">
               {match.user.bio}
             </Text>
           )}
-          
-          {match.user.skills && match.user.skills.length > 0 && (
+          {Array.isArray(match.user.skills) && match.user.skills.length > 0 && (
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Skills:</Text>
               <HStack wrap="wrap" spacing={1}>
@@ -83,8 +133,7 @@ const UserMatchCard = ({ match, onSendInvite }) => {
               </HStack>
             </Box>
           )}
-          
-          {match.user.interests && match.user.interests.length > 0 && (
+          {Array.isArray(match.user.interests) && match.user.interests.length > 0 && (
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Interests:</Text>
               <HStack wrap="wrap" spacing={1}>
@@ -96,9 +145,7 @@ const UserMatchCard = ({ match, onSendInvite }) => {
               </HStack>
             </Box>
           )}
-          
           <Divider />
-          
           <HStack justify="space-between" w="full">
             <VStack align="start" spacing={0}>
               <Text fontSize="xs" color="gray.500">Similarity Scores:</Text>
@@ -111,7 +158,6 @@ const UserMatchCard = ({ match, onSendInvite }) => {
                 </Text>
               </HStack>
             </VStack>
-            
             <Button 
               size="sm" 
               colorScheme="brand"
@@ -152,7 +198,7 @@ const ProjectSuggestionCard = ({ project }) => (
           </Text>
         )}
         
-        {project.required_skills && project.required_skills.length > 0 && (
+  {Array.isArray(project.required_skills) && project.required_skills.length > 0 && (
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={1}>Required Skills:</Text>
             <HStack wrap="wrap" spacing={1}>
@@ -165,7 +211,7 @@ const ProjectSuggestionCard = ({ project }) => (
           </Box>
         )}
         
-        {project.tech_stack && project.tech_stack.length > 0 && (
+  {Array.isArray(project.tech_stack) && project.tech_stack.length > 0 && (
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={1}>Tech Stack:</Text>
             <HStack wrap="wrap" spacing={1}>
@@ -183,7 +229,6 @@ const ProjectSuggestionCard = ({ project }) => (
 );
 
 const MatchmakingPage = () => {
-  const { user } = useAuth();
   const toast = useToast();
   const [matches, setMatches] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -214,14 +259,14 @@ const MatchmakingPage = () => {
     try {
       setProjectsLoading(true);
       const response = await matchmakingAPI.getProjectSuggestions();
-      setProjects(response.data);
+  setProjects(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Failed to fetch project suggestions:', err);
       // Try to populate sample data
       try {
         await matchmakingAPI.populateProjects();
         const response = await matchmakingAPI.getProjectSuggestions();
-        setProjects(response.data);
+    setProjects(Array.isArray(response.data) ? response.data : []);
       } catch (populateErr) {
         console.error('Failed to populate projects:', populateErr);
       }
@@ -254,7 +299,7 @@ const MatchmakingPage = () => {
       
       setMatches(response.data);
       
-      if (response.data.length === 0) {
+  if (Array.isArray(response.data) && response.data.length === 0) {
         toast({
           title: 'No matches found',
           description: 'Try adjusting your search criteria',
@@ -279,7 +324,7 @@ const MatchmakingPage = () => {
 
   const handleSendInvite = async (targetUser) => {
     // Find a team to invite from
-    if (userTeams.length === 0) {
+  if (Array.isArray(userTeams) && userTeams.length === 0) {
       toast({
         title: 'No teams available',
         description: 'Create a team first to send invitations',
@@ -315,6 +360,19 @@ const MatchmakingPage = () => {
         isClosable: true,
       });
     }
+  };
+
+  // Profile modal state
+  const [isProfileOpen, setProfileOpen] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+
+  const handleShowProfile = (profile) => {
+    setSelectedProfile(profile);
+    setProfileOpen(true);
+  };
+  const closeProfile = () => {
+    setProfileOpen(false);
+    setSelectedProfile(null);
   };
 
   return (
@@ -357,7 +415,7 @@ const MatchmakingPage = () => {
                       Add
                     </Button>
                   </HStack>
-                  {searchSkills.length > 0 && (
+                  {Array.isArray(searchSkills) && searchSkills.length > 0 && (
                     <HStack wrap="wrap" spacing={2}>
                       {searchSkills.map((skill, idx) => (
                         <Tag key={idx} colorScheme="blue">
@@ -389,7 +447,7 @@ const MatchmakingPage = () => {
                       Add
                     </Button>
                   </HStack>
-                  {searchInterests.length > 0 && (
+                  {Array.isArray(searchInterests) && searchInterests.length > 0 && (
                     <HStack wrap="wrap" spacing={2}>
                       {searchInterests.map((interest, idx) => (
                         <Tag key={idx} colorScheme="green">
@@ -419,16 +477,17 @@ const MatchmakingPage = () => {
                 )}
 
                 {/* Results */}
-                {matches.length > 0 && (
+                {Array.isArray(matches) && matches.length > 0 && (
                   <VStack spacing={4} align="stretch">
                     <Text fontWeight="medium" fontSize="lg">
-                      Found {matches.length} potential teammates
+                      Found {Array.isArray(matches) ? matches.length : 0} potential teammates
                     </Text>
                     {matches.map((match, idx) => (
                       <UserMatchCard 
                         key={idx} 
                         match={match} 
                         onSendInvite={handleSendInvite}
+                        onShowProfile={handleShowProfile}
                       />
                     ))}
                   </VStack>
@@ -443,6 +502,12 @@ const MatchmakingPage = () => {
                   </Center>
                 )}
               </VStack>
+              {/* Profile Modal for recommended users */}
+              <UserProfileModal
+                isOpen={isProfileOpen}
+                onClose={closeProfile}
+                profile={selectedProfile}
+              />
             </TabPanel>
 
             <TabPanel>
@@ -464,7 +529,7 @@ const MatchmakingPage = () => {
                       <ProjectSuggestionCard key={idx} project={project} />
                     ))}
                     
-                    {projects.length === 0 && (
+                    {Array.isArray(projects) && projects.length === 0 && (
                       <Center py={8}>
                         <Text color="gray.500">
                           No project suggestions available yet

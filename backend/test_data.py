@@ -21,41 +21,19 @@ from matchmaking.services import MatchingService
 
 User = get_user_model()
 
-# Sample data
 SKILLS = [
-    'JavaScript', 'Python', 'React', 'Node.js', 'Django', 'Flask',
-    'HTML', 'CSS', 'TypeScript', 'Vue.js', 'Angular', 'PHP',
-    'Java', 'C++', 'C#', 'Ruby', 'Go', 'Rust', 'Swift', 'Kotlin',
-    'SQL', 'MongoDB', 'PostgreSQL', 'Redis', 'Docker', 'Kubernetes',
-    'AWS', 'Azure', 'GCP', 'Git', 'Linux', 'DevOps', 'CI/CD',
-    'Machine Learning', 'Data Science', 'AI', 'TensorFlow', 'PyTorch',
-    'UI/UX Design', 'Figma', 'Adobe XD', 'Sketch', 'Photoshop',
-    'Mobile Development', 'React Native', 'Flutter', 'iOS', 'Android',
-    'Game Development', 'Unity', 'Unreal Engine', 'Blender',
-    'Blockchain', 'Smart Contracts', 'Web3', 'Solidity',
-    'Testing', 'Jest', 'Pytest', 'Selenium', 'QA',
-    'Project Management', 'Agile', 'Scrum', 'Leadership'
+    'Python', 'Django', 'React', 'Node.js', 'Machine Learning', 'Data Science',
+    'UI/UX Design', 'DevOps', 'AWS', 'Docker', 'Kubernetes', 'TensorFlow', 'PyTorch',
+    'JavaScript', 'TypeScript', 'SQL', 'MongoDB', 'PostgreSQL', 'Git', 'Linux'
 ]
 
 INTERESTS = [
-    'Web Development', 'Mobile Apps', 'Game Development', 'AI/ML',
-    'Data Science', 'Blockchain', 'IoT', 'Cybersecurity',
-    'Cloud Computing', 'DevOps', 'Open Source', 'Startups',
-    'Fintech', 'Healthtech', 'Edtech', 'Social Impact',
-    'E-commerce', 'SaaS', 'API Development', 'Microservices',
-    'AR/VR', 'Robotics', 'Computer Vision', 'NLP',
-    'Big Data', 'Analytics', 'Business Intelligence',
-    'UI/UX Design', 'Product Design', 'Graphic Design',
-    'Digital Marketing', 'Growth Hacking', 'SEO/SEM',
-    'Content Creation', 'Technical Writing', 'Documentation'
+    'Web Development', 'AI/ML', 'Data Science', 'Cloud Computing', 'Open Source',
+    'UI/UX Design', 'DevOps', 'Mobile Apps', 'Game Development', 'Social Impact'
 ]
 
 EVENT_TAGS = [
-    'Hackathon', 'GameDev', 'AI Challenge', 'Web3',
-    'Mobile Dev', 'Social Impact', 'Fintech', 'Healthtech',
-    'Climate Tech', 'Edtech', 'Open Source', 'Startup Weekend',
-    'API Contest', 'Data Science', 'Design Challenge',
-    'Innovation Lab', 'Code for Good', 'Women in Tech'
+    'Hackathon', 'AI Challenge', 'Open Source', 'Startup Weekend', 'Data Science', 'Design Challenge'
 ]
 
 FIRST_NAMES = [
@@ -144,78 +122,114 @@ def generate_bio():
     )
 
 
-def create_test_users(count=15):
-    """Create test users with random data"""
-    print(f"Creating {count} test users...")
+
+def create_test_users():
+    """Create new test users with full profile details and skills"""
+    print("Creating new test users with full profile details...")
+    users_data = [
+        {
+            'username': 'alice',
+            'email': 'alice@example.com',
+            'first_name': 'Alice',
+            'last_name': 'Smith',
+            'bio': 'Full-stack developer with 5 years experience in Python, Django, and React. Passionate about building scalable web apps and mentoring new developers.',
+            'skills': ['Python', 'Django', 'React', 'Docker', 'AWS'],
+            'interests': ['Web Development', 'Cloud Computing', 'Open Source'],
+            'availability': generate_availability(),
+            'event_tags': ['Hackathon', 'Open Source']
+        },
+        {
+            'username': 'bob',
+            'email': 'bob@example.com',
+            'first_name': 'Bob',
+            'last_name': 'Johnson',
+            'bio': 'Machine learning engineer with a strong background in data science and AI. Loves working on innovative projects and collaborating with diverse teams.',
+            'skills': ['Python', 'Machine Learning', 'TensorFlow', 'PyTorch', 'SQL'],
+            'interests': ['AI/ML', 'Data Science', 'Social Impact'],
+            'availability': generate_availability(),
+            'event_tags': ['AI Challenge', 'Data Science']
+        },
+        {
+            'username': 'carol',
+            'email': 'carol@example.com',
+            'first_name': 'Carol',
+            'last_name': 'Williams',
+            'bio': 'UI/UX designer focused on creating intuitive user experiences. Skilled in Figma, Adobe XD, and frontend development.',
+            'skills': ['UI/UX Design', 'React', 'Figma', 'Adobe XD', 'JavaScript'],
+            'interests': ['UI/UX Design', 'Web Development', 'Mobile Apps'],
+            'availability': generate_availability(),
+            'event_tags': ['Design Challenge', 'Hackathon']
+        },
+        {
+            'username': 'dave',
+            'email': 'dave@example.com',
+            'first_name': 'Dave',
+            'last_name': 'Brown',
+            'bio': 'DevOps engineer with expertise in cloud infrastructure, CI/CD, and automation. Enjoys optimizing workflows and deploying scalable systems.',
+            'skills': ['DevOps', 'AWS', 'Docker', 'Kubernetes', 'Linux'],
+            'interests': ['DevOps', 'Cloud Computing', 'Open Source'],
+            'availability': generate_availability(),
+            'event_tags': ['Startup Weekend', 'Hackathon']
+        },
+        {
+            'username': 'eve',
+            'email': 'eve@example.com',
+            'first_name': 'Eve',
+            'last_name': 'Davis',
+            'bio': 'Frontend developer and JavaScript enthusiast. Loves building beautiful interfaces and experimenting with new frameworks.',
+            'skills': ['JavaScript', 'React', 'TypeScript', 'CSS', 'Git'],
+            'interests': ['Web Development', 'UI/UX Design', 'Game Development'],
+            'availability': generate_availability(),
+            'event_tags': ['Hackathon', 'Design Challenge']
+        }
+    ]
     created_users = []
-    
-    for i in range(count):
-        username = f"testuser{i+1}"
-        email = f"testuser{i+1}@example.com"
-        first_name = random.choice(FIRST_NAMES)
-        last_name = random.choice(LAST_NAMES)
-        
-        # Skip if user already exists
-        if User.objects.filter(username=username).exists():
-            print(f"User {username} already exists, skipping...")
+    for user_data in users_data:
+        if User.objects.filter(username=user_data['username']).exists():
+            print(f"User {user_data['username']} already exists, skipping...")
             continue
-        
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            bio=generate_bio(),
-            skills=random.sample(SKILLS, random.randint(3, 8)),
-            interests=random.sample(INTERESTS, random.randint(2, 6)),
-            availability=generate_availability(),
-            event_tags=random.sample(EVENT_TAGS, random.randint(1, 4))
-        )
-        
+        user = User.objects.create_user(**user_data)
         created_users.append(user)
         print(f"Created user: {user.username} ({user.first_name} {user.last_name})")
-    
     return created_users
 
 
 def create_test_teams(users, count=4):
     """Create test teams and assign members"""
     print(f"\nCreating {count} test teams...")
+    # Delete all existing teams and memberships to avoid id conflicts
+    TeamMembership.objects.all().delete()
+    Team.objects.all().delete()
     created_teams = []
-    
     for i in range(count):
         creator = random.choice(users)
         team_name = random.choice(TEAM_NAMES)
-        
-        # Make sure team name is unique
         counter = 1
         original_name = team_name
         while Team.objects.filter(name=team_name).exists():
             team_name = f"{original_name} {counter}"
             counter += 1
-        
-        team = Team.objects.create(
+        # Ensure all teams are open and have full skills/tags for popup
+        team_skills = random.sample(SKILLS, 6)
+        team_tags = random.sample(EVENT_TAGS, 3)
+        team = Team(
             name=team_name,
             description=random.choice(PROJECT_DESCRIPTIONS),
             creator=creator,
-            max_size=random.randint(3, 6),
-            required_skills=random.sample(SKILLS, random.randint(2, 5)),
-            event_tags=random.sample(EVENT_TAGS, random.randint(1, 3)),
-            is_open=random.choice([True, True, True, False])  # 75% chance of being open
+            max_size=random.randint(4, 8),
+            required_skills=team_skills,
+            event_tags=team_tags,
+            is_open=True
         )
-        
-        # Add creator as team leader
+        team.save(force_insert=True)
         TeamMembership.objects.create(
             user=creator,
             team=team,
             role='Team Leader',
             is_leader=True
         )
-        
-        # Add random members (but don't exceed max_size)
         available_users = [u for u in users if u != creator]
-        num_additional_members = random.randint(0, min(team.max_size - 1, 3))
-        
+        num_additional_members = random.randint(2, min(team.max_size - 1, 5))
         for member in random.sample(available_users, num_additional_members):
             if not TeamMembership.objects.filter(user=member, team=team).exists():
                 roles = ['Developer', 'Designer', 'Product Manager', 'Data Scientist', 'DevOps Engineer']
@@ -225,10 +239,8 @@ def create_test_teams(users, count=4):
                     role=random.choice(roles),
                     is_leader=False
                 )
-        
         created_teams.append(team)
-        print(f"Created team: {team.name} (Creator: {creator.username}, Members: {team.current_size})")
-    
+        print(f"Created team: {team.name} (Creator: {creator.username}, Members: {team.current_size}, Skills: {team.required_skills}, Tags: {team.event_tags})")
     return created_teams
 
 
@@ -392,24 +404,23 @@ def main():
     
     try:
         # Create test users
-        users = create_test_users(15)
-        
+        users = create_test_users()
         if not users:
             print("No new users created, using existing users...")
             users = list(User.objects.all()[:15])
-        
+
         # Create test teams
         teams = create_test_teams(users, 4)
-        
+
         # Create project suggestions
         create_project_suggestions()
-        
+
         # Generate AI embeddings
         generate_user_embeddings(users)
-        
+
         # Create sample invitations
         create_sample_invitations(teams, users)
-        
+
         print("\n✅ Test data generation completed successfully!")
         print(f"📊 Summary:")
         print(f"   Users: {User.objects.count()}")
@@ -417,7 +428,6 @@ def main():
         print(f"   Projects: {ProjectSuggestion.objects.count()}")
         print(f"   Invitations: {TeamInvitation.objects.count()}")
         print(f"   Memberships: {TeamMembership.objects.count()}")
-        
     except Exception as e:
         print(f"❌ Error generating test data: {e}")
         sys.exit(1)

@@ -40,48 +40,53 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   syncFirebaseUser: (firebaseUID, userData) =>
-    api.post('/auth/sync-firebase/', { firebase_uid: firebaseUID, user_data: userData }),
-  
-  getProfile: () => api.get('/auth/profile/'),
-  
-  updateProfile: (data) => api.patch('/auth/profile/', data),
-  
-  getUsers: () => api.get('/auth/users/'),
+    api.post('/api/auth/sync-firebase/', { firebase_uid: firebaseUID, user_data: userData }),
+
+  getProfile: (firebaseUID) =>
+    api.get(`/api/auth/profile/?firebase_uid=${firebaseUID}`),
+
+  updateProfile: (firebaseUID, data) =>
+    api.patch('/api/auth/profile/', { ...data, firebase_uid: firebaseUID }),
+
+  getUsers: () => api.get('/api/auth/users/'),
 };
 
 // Teams API  
 export const teamsAPI = {
-  getTeams: () => api.get('/teams/'),
+  getTeams: () => api.get('/api/teams/'),
   
-  createTeam: (data) => api.post('/teams/', data),
+  createTeam: (data) => api.post('/api/teams/', data),
   
-  getTeam: (id) => api.get(`/teams/${id}/`),
+  getTeam: (id) => api.get(`/api/teams/${id}/`),
   
-  updateTeam: (id, data) => api.patch(`/teams/${id}/`, data),
+  updateTeam: (id, data) => api.patch(`/api/teams/${id}/`, data),
   
-  deleteTeam: (id) => api.delete(`/teams/${id}/`),
+  deleteTeam: (id) => api.delete(`/api/teams/${id}/`),
   
-  getUserTeams: () => api.get('/teams/my-teams/'),
+  getUserTeams: (firebase_uid) => api.get(`/api/teams/my-teams/?firebase_uid=${firebase_uid}`),
   
-  getInvitations: () => api.get('/teams/invitations/'),
+  getInvitations: () => api.get('/api/teams/invitations/'),
   
-  sendInvitation: (teamId, data) => api.post(`/teams/${teamId}/invite/`, data),
+  sendInvitation: (teamId, data) => api.post(`/api/teams/${teamId}/invite/`, data),
   
   respondToInvitation: (invitationId, action, role) => 
-    api.post(`/teams/invitations/${invitationId}/respond/`, { action, role }),
+  api.post(`/api/teams/invitations/${invitationId}/respond/`, { action, role }),
 };
 
 // Matchmaking API
 export const matchmakingAPI = {
-  findMatches: (data) => api.post('/matchmaking/find/', data),
+  findMatches: (data) => api.post('/api/matchmaking/find/', data),
   
-  getAvailabilityOverlap: (userId) => api.get(`/matchmaking/availability/${userId}/`),
+  getAvailabilityOverlap: (userId) => api.get(`/api/matchmaking/availability/${userId}/`),
   
-  getProjectSuggestions: () => api.get('/matchmaking/projects/'),
+  getProjectSuggestions: () => api.get('/api/matchmaking/projects/'),
   
-  refreshEmbedding: () => api.post('/matchmaking/refresh-embedding/'),
+  refreshEmbedding: () => api.post('/api/matchmaking/refresh-embedding/'),
   
-  populateProjects: () => api.post('/matchmaking/populate-projects/'),
+  populateProjects: () => api.post('/api/matchmaking/populate-projects/'),
+
+  // Hugging Face recommendations for a given UID
+  getRecommendations: (uid) => api.get(`/api/matchmaking/recommendations/?uid=${uid}`),
 };
 
 export default api;

@@ -174,8 +174,8 @@ const HeatmapPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await authAPI.getUsers();
-      setUsers(response.data);
+  const response = await authAPI.getUsers();
+  setUsers(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError('Failed to load users');
       console.error(err);
@@ -184,7 +184,8 @@ const HeatmapPage = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await authAPI.getProfile();
+      if (!user?.uid) throw new Error('No user UID available');
+      const response = await authAPI.getProfile(user.uid);
       setUserAvailability(response.data.availability || {});
     } catch (err) {
       console.error('Failed to load user profile:', err);
@@ -238,7 +239,8 @@ const HeatmapPage = () => {
     // Auto-save after a delay
     setSavingAvailability(true);
     try {
-      await authAPI.updateProfile({ availability: newAvailability });
+  if (!user?.uid) throw new Error('No user UID available');
+  await authAPI.updateProfile(user.uid, { availability: newAvailability });
       toast({
         title: 'Availability updated',
         status: 'success',
@@ -299,7 +301,7 @@ const HeatmapPage = () => {
               <Box>
                 <Heading size="md" mb={3}>Compare With:</Heading>
                 <VStack spacing={2}>
-                  {users.map((u, idx) => (
+                  {Array.isArray(users) && users.map((u, idx) => (
                     <UserAvailabilityCard
                       key={idx}
                       user={u}

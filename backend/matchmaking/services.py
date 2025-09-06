@@ -6,38 +6,17 @@ import numpy as np
 from typing import List, Dict, Any
 from django.contrib.auth import get_user_model
 from accounts.models import UserEmbedding
-
-# Note: In a real implementation, we would import sentence_transformers
-# For now, we'll create a mock implementation that can work without the package
+from sentence_transformers import SentenceTransformer
 
 User = get_user_model()
 
 
-class MockSentenceTransformer:
-    """Mock implementation for when sentence-transformers is not available"""
-    
-    def encode(self, sentences: List[str]) -> np.ndarray:
-        """Create mock embeddings based on text length and content"""
-        embeddings = []
-        for sentence in sentences:
-            # Create a simple hash-based embedding
-            embedding = []
-            for i in range(384):  # MiniLM has 384 dimensions
-                # Simple hash function based on sentence content and position
-                val = (hash(sentence + str(i)) % 1000) / 1000.0
-                embedding.append(val)
-            embeddings.append(embedding)
-        return np.array(embeddings)
-
-
 class MatchingService:
     """Service for AI-powered user matching"""
-    
     def __init__(self):
-        # Always use mock implementation for development
-        # In production, you would configure the real sentence transformer
-        self.model = MockSentenceTransformer()
-        self.using_mock = True
+        # Use real Hugging Face model
+        self.model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+        self.using_mock = False
     
     def create_user_embedding(self, user: User) -> Dict[str, List[float]]:
         """Create embeddings for a user's skills and interests"""

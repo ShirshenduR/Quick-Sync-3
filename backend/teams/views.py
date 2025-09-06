@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -16,7 +16,7 @@ User = get_user_model()
 class TeamListCreateView(generics.ListCreateAPIView):
     """List all teams or create a new team"""
     serializer_class = TeamSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = []
     
     def get_queryset(self):
         return Team.objects.filter(is_open=True).order_by('-created_at')
@@ -27,12 +27,14 @@ class TeamListCreateView(generics.ListCreateAPIView):
         return TeamSerializer
     
     def perform_create(self, serializer):
-        # Create team with current user as creator
-        team = serializer.save(creator=self.request.user)
-        
-        # Add creator as team leader
+        # Use firebase_uid for team creator
+        firebase_uid = self.request.data.get('firebase_uid')
+        user = User.objects.filter(firebase_uid=firebase_uid).first() if firebase_uid else None
+        if not user:
+            raise serializers.ValidationError({'creator': 'Valid creator (firebase_uid) required.'})
+        team = serializer.save(creator=user)
         TeamMembership.objects.create(
-            user=self.request.user,
+            user=user,
             team=team,
             role='Team Leader',
             is_leader=True
@@ -52,27 +54,37 @@ class TeamDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class UserTeamsView(generics.ListAPIView):
-    """Get teams for current user"""
+    """Get teams for current user (public, uses firebase_uid)"""
     serializer_class = TeamSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
+    permission_classes = []
+
     def get_queryset(self):
-        return self.request.user.teams.all().order_by('-created_at')
+        firebase_uid = self.request.data.get('firebase_uid') or self.request.query_params.get('firebase_uid')
+        if not firebase_uid:
+            return Team.objects.none()
+        user = User.objects.filter(firebase_uid=firebase_uid).first()
+        if not user:
+            return Team.objects.none()
+        return user.teams.all().order_by('-created_at')
 
 
 class TeamInvitationsView(generics.ListAPIView):
-    """List team invitations for current user"""
+    """List team invitations for current user (public, uses firebase_uid)"""
     serializer_class = TeamInvitationSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
+    permission_classes = []
+
     def get_queryset(self):
-        return TeamInvitation.objects.filter(
-            invitee=self.request.user
-        ).order_by('-created_at')
+        firebase_uid = self.request.data.get('firebase_uid') or self.request.query_params.get('firebase_uid')
+        if not firebase_uid:
+            return TeamInvitation.objects.none()
+        user = User.objects.filter(firebase_uid=firebase_uid).first()
+        if not user:
+            return TeamInvitation.objects.none()
+        return TeamInvitation.objects.filter(invitee=user).order_by('-created_at')
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([])
 def send_team_invitation(request, team_id):
     """Send a team invitation"""
     team = get_object_or_404(Team, id=team_id)
