@@ -36,7 +36,9 @@ class MatchingService:
 
         # Compute Jaccard similarity for skills and interests
         def jaccard(query, user):
-            set_query, set_user = set(query), set(user)
+            # Lowercase all skills/interests for case-insensitive matching
+            set_query = set([str(q).strip().lower() for q in query])
+            set_user = set([str(u).strip().lower() for u in user])
             if not set_query:
                 return 0.0
             intersection = set_query & set_user
